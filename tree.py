@@ -18,4 +18,3 @@ class Add(Node):
 a = Node()
 b = Node()
 c = Add(a, b)
-print(c.calculate({}))
