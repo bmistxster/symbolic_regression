@@ -10,6 +10,9 @@ class Node:
     def calculate(self, values_dict):
         raise NotImplementedError("")
 
+    def id(self):
+        raise NotImplementedError("")
+
 class Add(Node):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
