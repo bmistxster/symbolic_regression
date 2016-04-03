@@ -101,7 +101,10 @@ class Sin(UnaryOperator):
 
 class Sqrt(UnaryOperator):
     def calculate(self, values_dict):
-        return math.sqrt(self.child.calculate(values_dict))
+        x = self.child.calculate(values_dict)
+        if x < 0:
+            x = -x
+        return math.sqrt(x)
 
     def id(self):
         return OPERATOR_SQRT
