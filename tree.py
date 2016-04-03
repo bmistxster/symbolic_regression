@@ -1,3 +1,4 @@
+import hashlib
 import math
 
 OPERATOR_ADD = "add"
@@ -7,7 +8,7 @@ OPERATOR_SIN = "sin"
 OPERATOR_SQRT = "sqrt"
 OPERATOR_VAR = "var"
 
-class Node:
+class Node(object):
     def __init__(self):
         pass
 
@@ -23,13 +24,35 @@ class Node:
     def __str__(self):
         raise NotImplementedError("")
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.eq(other)
+
+    def __hash__(self):
+        return hash(self.hsh)
+
+    def eq(self, other):
+        raise NotImplementedError("")
+
 class BinaryOperator(Node):
     def __init__(self, lhs, rhs):
-        self.lhs = lhs
-        self.rhs = rhs
+        self.depth = 1 + max(lhs.depth, rhs.depth)
+        if lhs.hsh < rhs.hsh:
+            self.lhs = lhs
+            self.rhs = rhs
+        else:
+            self.lhs = rhs
+            self.rhs = lhs
+        md5 = hashlib.md5()
+        md5.update(self.id())
+        md5.update(self.lhs.hsh)
+        md5.update(self.rhs.hsh)
+        self.hsh = md5.hexdigest()
 
     def children(self):
         return [self.lhs, self.rhs]
+
+    def eq(self, other):
+        return self.lhs == other.lhs and self.rhs == other.rhs
 
 class Add(BinaryOperator):
     def calculate(self, values_dict):
@@ -53,10 +76,18 @@ class Mul(BinaryOperator):
 
 class UnaryOperator(Node):
     def __init__(self, child):
+        self.depth = 1 + child.depth
         self.child = child
+        md5 = hashlib.md5()
+        md5.update(self.id())
+        md5.update(self.child.hsh)
+        self.hsh = md5.hexdigest()
 
     def children(self):
         return [self.child]
+
+    def eq(self, other):
+        return self.child == other.child
 
 class Sin(UnaryOperator):
     def calculate(self, values_dict):
@@ -80,7 +111,9 @@ class Sqrt(UnaryOperator):
 
 class Const(Node):
     def __init__(self, value):
+        self.depth = 1
         self.value = value
+        self.hsh = hashlib.md5(str(value)).hexdigest()
 
     def children(self):
         return []
@@ -94,9 +127,14 @@ class Const(Node):
     def __str__(self):
         return str(self.value)
 
+    def eq(self, other):
+        return self.value == other.value
+
 class Var(Node):
     def __init__(self, name):
+        self.depth = 1
         self.name = name
+        self.hsh = hashlib.md5(str(name)).hexdigest()
 
     def children(self):
         return []
@@ -110,8 +148,45 @@ class Var(Node):
     def __str__(self):
         return self.name
 
+    def eq(self, other):
+        return self.name == other.name
+
+def generate_expressions(level):
+    exprs = [Const(1), Const(2), Const(-1), Var("x")]
+    for expr in exprs:
+        yield expr
+    binary_ops = [Add, Mul]
+    unary_ops = [Sin, Sqrt]
+    for it in xrange(level):
+        new_exprs = set()
+        for expr in exprs:
+            new_exprs.add(expr)
+        for op in unary_ops:
+            for expr in exprs:
+                nexpr = op(expr)
+                if nexpr not in new_exprs:
+                    yield nexpr
+                    new_exprs.add(nexpr)
+        for op in binary_ops:
+            for ind1 in xrange(len(exprs)):
+                for ind2 in xrange(ind1, len(exprs)):
+                    nexpr = op(exprs[ind1], exprs[ind2])
+                    if nexpr not in new_exprs:
+                        yield nexpr
+                        new_exprs.add(nexpr)
+        exprs = list(new_exprs)
+
+cnt = 0
+for a in generate_expressions(1):
+    print(a)
+    cnt += 1
+    #if cnt % 10000 == 0:
+    #    print(cnt)
+print(cnt)
 a = Var("x")
 b = Var("y")
 c = Add(a, b)
-print(c)
-print(c.calculate({"x": 1, "y": 2}))
+#print(c)
+#print(c.calculate({"x": 1, "y": 2}))
+#print(isinstance(c, UnaryOperator))
+#print(isinstance(c, BinaryOperator))
